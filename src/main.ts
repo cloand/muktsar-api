@@ -4,7 +4,9 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, {
+    logger: process.env.NODE_ENV === 'production' ? ['error', 'warn'] : ['log', 'error', 'warn', 'debug', 'verbose'],
+  });
 
   // Enable CORS
   app.enableCors({
@@ -36,22 +38,26 @@ async function bootstrap() {
     }),
   );
 
-  // Swagger documentation
-  const config = new DocumentBuilder()
-    .setTitle('Muktsar NGO API')
-    .setDescription('API for Muktsar NGO Admin Panel and Website')
-    .setVersion('1.0')
-    .addBearerAuth()
-    .build();
+  // Swagger documentation (only in development)
+  if (process.env.NODE_ENV !== 'production') {
+    const config = new DocumentBuilder()
+      .setTitle('Muktsar NGO API')
+      .setDescription('API for Muktsar NGO Admin Panel and Website')
+      .setVersion('1.0')
+      .addBearerAuth()
+      .build();
 
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api/docs', app, document);
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('api/docs', app, document);
+  }
 
   const port = process.env.PORT || 3001;
   await app.listen(port);
 
-  console.log(`🚀 Application is running on: http://localhost:${port}`);
-  console.log(`📚 Swagger docs available at: http://localhost:${port}/api/docs`);
+  console.log(`🚀 Application is running on port: ${port}`);
+  if (process.env.NODE_ENV !== 'production') {
+    console.log(`📚 Swagger docs available at: http://localhost:${port}/api/docs`);
+  }
 }
 
 bootstrap();
