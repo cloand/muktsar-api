@@ -12,7 +12,9 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
           url: process.env.DATABASE_URL,
         },
       },
-      log: process.env.NODE_ENV === 'development' ? ['query', 'info', 'warn', 'error'] : ['error'],
+      log: process.env.NODE_ENV === 'development' ? ['info', 'warn', 'error'] : ['error'],
+      // Optimize for single connection
+      errorFormat: 'minimal',
     });
   }
 
@@ -40,5 +42,34 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
     process.on('beforeExit', async () => {
       await app.close();
     });
+  }
+
+  // Health check method
+  async isHealthy(): Promise<boolean> {
+    try {
+      await this.$queryRaw`SELECT 1`;
+      return true;
+    } catch (error) {
+      this.logger.error('Database health check failed:', error);
+      return false;
+    }
+  }
+
+  // Get connection info
+  async getConnectionInfo(): Promise<any> {
+    try {
+      const result = await this.$queryRaw`
+        SELECT
+          count(*) as active_connections,
+          current_database() as database_name,
+          current_user as current_user
+        FROM pg_stat_activity
+        WHERE state = 'active'
+      `;
+      return result;
+    } catch (error) {
+      this.logger.error('Failed to get connection info:', error);
+      return null;
+    }
   }
 }
